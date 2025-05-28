@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const createClient = (request: NextRequest) => {
-  // Crea una instancia de NextResponse para poder leer y escribir cookies.
+  // Crear una única instancia de respuesta que será modificada
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -18,17 +18,7 @@ export const createClient = (request: NextRequest) => {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Si la cookie está siendo configurada, actualiza la respuesta para que la cookie sea establecida.
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
+          // Establecer la cookie en la respuesta existente
           response.cookies.set({
             name,
             value,
@@ -36,17 +26,7 @@ export const createClient = (request: NextRequest) => {
           });
         },
         remove(name: string, options: CookieOptions) {
-          // Si la cookie está siendo eliminada, actualiza la respuesta para que la cookie sea eliminada.
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
+          // Eliminar la cookie de la respuesta existente
           response.cookies.set({
             name,
             value: '',
