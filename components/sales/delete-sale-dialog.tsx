@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 export default function DeleteSaleDialog({
   saleId,
@@ -27,7 +27,6 @@ export default function DeleteSaleDialog({
 
   const handleDelete = async () => {
     setLoading(true);
-    const supabase = createClient();
     
     try {
       // Primero eliminamos los items de la venta

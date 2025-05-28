@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { Sale } from "@/types/sales";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,7 +53,6 @@ export default function EditSaleDialog({
 
   const handleUpdateSale = async () => {
     setLoading(true);
-    const supabase = createClient();
     
     try {
       const { error } = await supabase
