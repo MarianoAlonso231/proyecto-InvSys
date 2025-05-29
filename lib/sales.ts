@@ -1,8 +1,7 @@
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { Sale, CreateSaleDTO, SaleItem, CreateSaleItemDTO } from '@/types/sales'
 
 export async function getSales() {
-  const supabase = createClient()
   const { data, error } = await supabase
     .from('sales')
     .select('*')
@@ -13,7 +12,6 @@ export async function getSales() {
 }
 
 export async function getSaleById(id: string) {
-  const supabase = createClient()
   const { data: sale, error: saleError } = await supabase
     .from('sales')
     .select('*')
@@ -43,7 +41,6 @@ export async function getSaleById(id: string) {
 }
 
 export async function createSale(sale: CreateSaleDTO, items: CreateSaleItemDTO[]) {
-  const supabase = createClient()
   
   // Iniciar una transacción insertando primero la venta
   const { data: newSale, error: saleError } = await supabase
@@ -79,7 +76,6 @@ export async function createSale(sale: CreateSaleDTO, items: CreateSaleItemDTO[]
 }
 
 export async function updateSaleStatus(id: string, status: Sale['status']) {
-  const supabase = createClient()
   const { data, error } = await supabase
     .from('sales')
     .update({ status })
@@ -92,7 +88,6 @@ export async function updateSaleStatus(id: string, status: Sale['status']) {
 }
 
 export async function deleteSale(id: string) {
-  const supabase = createClient()
   const { error } = await supabase
     .from('sales')
     .delete()

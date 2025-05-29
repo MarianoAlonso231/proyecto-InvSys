@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, ImagePlus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 interface FormData {
   name: string;
@@ -24,6 +24,7 @@ interface FormData {
   unit_price: string;
   current_stock: string;
   min_stock_level: string;
+  image: File | null;
 }
 
 export default function ProductCreateDialog({
@@ -41,15 +42,44 @@ export default function ProductCreateDialog({
     unit_price: "",
     current_stock: "",
     min_stock_level: "",
+    image: null,
   });
   const { toast } = useToast();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData((prev) => ({ ...prev, image: e.target.files![0] }));
+    }
+  };
+
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `product-images/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const supabase = createClient();
 
     try {
+      let image_url = null;
+      if (formData.image) {
+        image_url = await uploadImage(formData.image);
+      }
+
       const { error } = await supabase.from("products").insert({
         name: formData.name,
         description: formData.description,
@@ -58,6 +88,7 @@ export default function ProductCreateDialog({
         unit_price: parseFloat(formData.unit_price),
         current_stock: parseInt(formData.current_stock),
         min_stock_level: parseInt(formData.min_stock_level) || 0,
+        image_url: image_url,
       });
 
       if (error) throw error;
@@ -76,6 +107,7 @@ export default function ProductCreateDialog({
         unit_price: "",
         current_stock: "",
         min_stock_level: "",
+        image: null,
       });
     } catch (error) {
       toast({
@@ -192,6 +224,32 @@ export default function ProductCreateDialog({
               }
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="image">Imagen del Producto</Label>
+            <div className="flex items-center gap-4">
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('image')?.click()}
+              >
+                <ImagePlus className="mr-2 h-4 w-4" />
+                Seleccionar Imagen
+              </Button>
+              {formData.image && (
+                <span className="text-sm text-muted-foreground">
+                  {formData.image.name}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2">

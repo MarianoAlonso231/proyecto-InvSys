@@ -34,19 +34,17 @@ import {
   MoreHorizontal,
   AlertTriangle,
   Package,
-  Loader2
+  Loader2,
+  Image as ImageIcon
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import ProductCreateDialog from "./product-create-dialog";
 import ProductEditDialog from "./product-edit-dialog";
 import DeleteProductDialog from "./delete-product-dialog";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/lib/supabase/client";
+import Image from "next/image";
 
 export default function ProductsDataTable() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -177,8 +175,21 @@ export default function ProductsDataTable() {
                 filteredProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
-                      <div className="flex items-center">
-                        <Package className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-3">
+                        {product.image_url ? (
+                          <div className="relative h-10 w-10 rounded-md overflow-hidden">
+                            <Image
+                              src={product.image_url}
+                              alt={product.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-md border">
+                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
                         <div className="font-medium">{product.name}</div>
                       </div>
                     </TableCell>

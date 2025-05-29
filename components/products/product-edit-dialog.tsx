@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Loader2 } from "lucide-react";
+import { Pencil, Loader2, ImagePlus, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { Database } from "@/types/supabase";
+import Image from "next/image";
 
 type Product = Database["public"]["Tables"]["products"]["Row"];
 
@@ -27,6 +28,8 @@ interface FormData {
   unit_price: string;
   current_stock: string;
   min_stock_level: string;
+  image: File | null;
+  image_url: string | null;
 }
 
 export default function ProductEditDialog({
@@ -46,15 +49,58 @@ export default function ProductEditDialog({
     unit_price: product.unit_price.toString(),
     current_stock: product.current_stock.toString(),
     min_stock_level: (product.min_stock_level || 0).toString(),
+    image: null,
+    image_url: product.image_url,
   });
   const { toast } = useToast();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFormData((prev) => ({ 
+        ...prev, 
+        image: e.target.files![0],
+        image_url: null // Limpiar la URL anterior cuando se selecciona una nueva imagen
+      }));
+    }
+  };
+
+  const removeImage = () => {
+    setFormData((prev) => ({ 
+      ...prev, 
+      image: null,
+      image_url: null 
+    }));
+  };
+
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `product-images/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const supabase = createClient();
-
+    
     try {
+      let image_url = formData.image_url;
+      
+      if (formData.image) {
+        image_url = await uploadImage(formData.image);
+      }
+
       const { error } = await supabase
         .from("products")
         .update({
@@ -65,6 +111,7 @@ export default function ProductEditDialog({
           unit_price: parseFloat(formData.unit_price),
           current_stock: parseInt(formData.current_stock),
           min_stock_level: parseInt(formData.min_stock_level) || 0,
+          image_url: image_url,
           updated_at: new Date().toISOString(),
         })
         .eq("id", product.id);
@@ -192,6 +239,53 @@ export default function ProductEditDialog({
               }
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="image">Imagen del Producto</Label>
+            <div className="flex items-center gap-4">
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('image')?.click()}
+              >
+                <ImagePlus className="mr-2 h-4 w-4" />
+                {formData.image_url ? "Cambiar Imagen" : "Seleccionar Imagen"}
+              </Button>
+              {(formData.image || formData.image_url) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  onClick={removeImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {formData.image && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Nueva imagen seleccionada: {formData.image.name}
+              </p>
+            )}
+            {formData.image_url && !formData.image && (
+              <div className="mt-2 relative w-32 h-32">
+                <Image
+                  src={formData.image_url}
+                  alt="Imagen del producto"
+                  fill
+                  className="object-cover rounded-md"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-2">

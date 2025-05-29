@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import CreateSaleForm from "./create-sale-form";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 export default function CreateSaleDialog({
   onSaleCreated,
@@ -32,7 +32,6 @@ export default function CreateSaleDialog({
   }, []);
 
   const loadProducts = async () => {
-    const supabase = createClient();
     const { data, error } = await supabase
       .from("products")
       .select("id, name, unit_price")
