@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 
@@ -8,6 +9,15 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const pathname = usePathname();
+  const isLoginPage = pathname === '/login';
+
+  // Si es la página de login, solo renderiza el contenido sin layout
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  // Layout normal con header y sidebar para todas las demás páginas
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -19,4 +29,4 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </div>
     </div>
   );
-} 
+}
