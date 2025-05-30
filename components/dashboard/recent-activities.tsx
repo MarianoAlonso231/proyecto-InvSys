@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { 
   Card, 
   CardContent, 
@@ -11,50 +12,33 @@ import {
   ShoppingCart, 
   Receipt, 
   Package, 
-  LayoutList 
+  LayoutList,
+  Loader2
 } from "lucide-react";
+import { Activity, getRecentActivities } from "@/lib/activities";
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function RecentActivities() {
-  // Mock data - in a real app, this would come from the API
-  const activities = [
-    {
-      id: 1,
-      type: "purchase",
-      description: "New purchase from Supplier XYZ",
-      date: "2 hours ago",
-      amount: "$1,240.00",
-    },
-    {
-      id: 2,
-      type: "sale",
-      description: "New sale to Customer ABC",
-      date: "5 hours ago",
-      amount: "$580.00",
-    },
-    {
-      id: 3,
-      type: "stock",
-      description: "Stock updated for 3 products",
-      date: "Yesterday",
-      amount: null,
-    },
-    {
-      id: 4,
-      type: "purchase",
-      description: "New purchase from Supplier DEF",
-      date: "Yesterday",
-      amount: "$3,200.00",
-    },
-    {
-      id: 5,
-      type: "sale",
-      description: "New sale to Customer GHI",
-      date: "2 days ago",
-      amount: "$950.00",
-    },
-  ];
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const getIcon = (type: string) => {
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const data = await getRecentActivities();
+        setActivities(data);
+      } catch (error) {
+        console.error('Error al cargar actividades:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, []);
+
+  const getIcon = (type: Activity['type']) => {
     switch (type) {
       case "purchase":
         return <ShoppingCart className="h-4 w-4" />;
@@ -67,7 +51,7 @@ export default function RecentActivities() {
     }
   };
 
-  const getIconColor = (type: string) => {
+  const getIconColor = (type: Activity['type']) => {
     switch (type) {
       case "purchase":
         return "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300";
@@ -80,6 +64,14 @@ export default function RecentActivities() {
     }
   };
 
+  const formatAmount = (amount: number | null) => {
+    if (amount === null) return null;
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS'
+    }).format(amount);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -89,27 +81,44 @@ export default function RecentActivities() {
         </CardDescription>
       </CardHeader>
       <CardContent className="px-2">
-        <div className="space-y-2">
-          {activities.map((activity) => (
-            <div 
-              key={activity.id} 
-              className="flex items-center gap-4 rounded-lg p-2 transition-colors hover:bg-accent"
-            >
-              <div className={`rounded-full p-2 ${getIconColor(activity.type)}`}>
-                {getIcon(activity.type)}
-              </div>
-              <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium">{activity.description}</p>
-                <p className="text-xs text-muted-foreground">{activity.date}</p>
-              </div>
-              {activity.amount && (
-                <div className="font-medium">
-                  {activity.amount}
+        {loading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {activities.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">
+                No hay actividades recientes
+              </p>
+            ) : (
+              activities.map((activity) => (
+                <div 
+                  key={activity.id} 
+                  className="flex items-center gap-4 rounded-lg p-2 transition-colors hover:bg-accent"
+                >
+                  <div className={`rounded-full p-2 ${getIconColor(activity.type)}`}>
+                    {getIcon(activity.type)}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(activity.date), { 
+                        addSuffix: true,
+                        locale: es 
+                      })}
+                    </p>
+                  </div>
+                  {activity.amount !== null && (
+                    <div className="font-medium">
+                      {formatAmount(activity.amount)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

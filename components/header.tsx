@@ -11,11 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Menu } from 'lucide-react'; // Agregamos Menu icon
 import { supabase } from '@/lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export function Header() {
+interface HeaderProps {
+  onToggleSidebar?: () => void; // Nueva prop para toggle de sidebar
+}
+
+export function Header({ onToggleSidebar }: HeaderProps) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
 
@@ -51,10 +55,21 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center justify-between px-6">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-4">
-          <a href="/" className="flex items-center space-x-2">
+          {/* Botón de menu para mobile */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onToggleSidebar}
+            className="md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          
+          {/* Logo - solo visible en mobile ya que en desktop está en sidebar */}
+          <a href="/" className="flex items-center space-x-2 md:hidden">
             <span className="font-bold">InvSys</span>
           </a>
         </div>
@@ -66,7 +81,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 px-2 h-8">
                   <User className="h-4 w-4" />
-                  <span className="text-sm">{currentUser.email}</span>
+                  <span className="text-sm hidden sm:inline">{currentUser.email}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -81,4 +96,4 @@ export function Header() {
       </div>
     </header>
   );
-} 
+}

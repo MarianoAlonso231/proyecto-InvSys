@@ -173,7 +173,7 @@ export default function CreatePurchaseForm({ onSuccess }: { onSuccess: () => voi
     try {
       const purchase: CreatePurchaseDTO = {
         ...values,
-        purchase_date: new Date().toISOString(),
+        purchase_date: new Date(),
         total_amount: selectedProducts.reduce((sum, item) => sum + item.total, 0),
       };
 
