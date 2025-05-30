@@ -1,8 +1,10 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTheme } from "next-themes";
 import {
+  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -10,34 +12,53 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
 } from "recharts";
+import { getMonthlyPurchases } from "@/lib/reports";
+import { Loader2 } from "lucide-react";
 
 export default function PurchasesReportChart() {
   const { theme } = useTheme();
-  
-  // Mock data - in a real app, this would come from the API
-  const data = [
-    { month: "Jan", purchases: 3200, budget: 3500 },
-    { month: "Feb", purchases: 3500, budget: 3500 },
-    { month: "Mar", purchases: 4100, budget: 4000 },
-    { month: "Apr", purchases: 3800, budget: 4000 },
-    { month: "May", purchases: 4700, budget: 4500 },
-    { month: "Jun", purchases: 5800, budget: 5000 },
-    { month: "Jul", purchases: 6400, budget: 5500 },
-    { month: "Aug", purchases: 6100, budget: 6000 },
-    { month: "Sep", purchases: 7200, budget: 6500 },
-    { month: "Oct", purchases: 7500, budget: 7000 },
-    { month: "Nov", purchases: 7900, budget: 7500 },
-    { month: "Dec", purchases: 8700, budget: 8000 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+        const purchasesData = await getMonthlyPurchases(currentYear);
+        setData(purchasesData);
+      } catch (error) {
+        console.error("Error al cargar datos de compras:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Análisis de Compras</CardTitle>
+          <CardDescription>
+            Compras mensuales vs presupuesto para el año actual
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[400px] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Purchase Analysis</CardTitle>
+        <CardTitle>Análisis de Compras</CardTitle>
         <CardDescription>
-          Monthly purchases vs budget for the current year
+          Compras mensuales vs presupuesto para el año actual
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[400px]">
@@ -51,46 +72,46 @@ export default function PurchasesReportChart() {
               bottom: 20,
             }}
           >
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              vertical={false} 
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
               stroke={theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
             />
-            <XAxis 
-              dataKey="month" 
-              tick={{ fontSize: 12 }} 
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
               stroke={theme === "dark" ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
             />
-            <YAxis 
-              tick={{ fontSize: 12 }} 
+            <YAxis
+              tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
               stroke={theme === "dark" ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
               tickFormatter={(value) => `$${value / 1000}k`}
             />
-            <Tooltip 
-              contentStyle={{ 
+            <Tooltip
+              contentStyle={{
                 backgroundColor: theme === "dark" ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.8)",
                 borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
                 borderRadius: "6px",
-                color: theme === "dark" ? "white" : "black"
+                color: theme === "dark" ? "white" : "black",
               }}
               formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
             />
             <Legend />
-            <Bar 
-              name="Purchases" 
-              dataKey="purchases" 
-              fill="hsl(var(--chart-3))" 
-              radius={[4, 4, 0, 0]} 
+            <Bar
+              name="Compras"
+              dataKey="purchases"
+              fill="hsl(var(--chart-3))"
+              radius={[4, 4, 0, 0]}
             />
-            <Bar 
-              name="Budget" 
-              dataKey="budget" 
-              fill="hsl(var(--chart-4))" 
-              radius={[4, 4, 0, 0]} 
+            <Bar
+              name="Presupuesto"
+              dataKey="budget"
+              fill="hsl(var(--chart-4))"
+              radius={[4, 4, 0, 0]}
             />
           </BarChart>
         </ResponsiveContainer>

@@ -5,18 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useTheme } from "next-themes";
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
 } from "recharts";
-import { getMonthlySales } from "@/lib/reports";
+import { getMonthlyInventoryValue } from "@/lib/reports";
 import { Loader2 } from "lucide-react";
 
-export default function SalesReportChart() {
+export default function InventoryReportChart() {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any[]>([]);
@@ -25,10 +25,10 @@ export default function SalesReportChart() {
     const fetchData = async () => {
       try {
         const currentYear = new Date().getFullYear();
-        const salesData = await getMonthlySales(currentYear);
-        setData(salesData);
+        const inventoryData = await getMonthlyInventoryValue(currentYear);
+        setData(inventoryData);
       } catch (error) {
-        console.error("Error al cargar datos de ventas:", error);
+        console.error("Error al cargar datos de inventario:", error);
       } finally {
         setLoading(false);
       }
@@ -41,9 +41,9 @@ export default function SalesReportChart() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Análisis de Ventas</CardTitle>
+          <CardTitle>Valor del Inventario</CardTitle>
           <CardDescription>
-            Ventas mensuales vs objetivo para el año actual
+            Valor total del inventario por mes
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[400px] flex items-center justify-center">
@@ -56,14 +56,14 @@ export default function SalesReportChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Análisis de Ventas</CardTitle>
+        <CardTitle>Valor del Inventario</CardTitle>
         <CardDescription>
-          Ventas mensuales vs objetivo para el año actual
+          Valor total del inventario por mes
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
+          <LineChart
             data={data}
             margin={{
               top: 20,
@@ -101,21 +101,17 @@ export default function SalesReportChart() {
               formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
             />
             <Legend />
-            <Bar
-              name="Ventas"
-              dataKey="sales"
-              fill="hsl(var(--chart-1))"
-              radius={[4, 4, 0, 0]}
+            <Line
+              name="Valor Total"
+              type="monotone"
+              dataKey="value"
+              stroke="hsl(var(--chart-5))"
+              strokeWidth={2}
+              dot={false}
             />
-            <Bar
-              name="Objetivo"
-              dataKey="target"
-              fill="hsl(var(--chart-2))"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
   );
-}
+} 

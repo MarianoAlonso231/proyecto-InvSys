@@ -75,7 +75,7 @@ export default function LoginForm() {
                 </svg>
               </div>
               <Input
-                className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-gray-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 backdrop-blur-sm"
+                className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-gray-400 focus:border-gray-500/50 focus:ring-2 focus:ring-gray-500/20 transition-all duration-200 backdrop-blur-sm"
                 id="email"
                 type="email"
                 name="email"
@@ -103,7 +103,7 @@ export default function LoginForm() {
                 </svg>
               </div>
               <Input
-                className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-gray-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 backdrop-blur-sm"
+                className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-gray-400 focus:border-gray-500/50 focus:ring-2 focus:ring-gray-500/20 transition-all duration-200 backdrop-blur-sm"
                 id="password"
                 type="password"
                 name="password"
@@ -121,7 +121,7 @@ export default function LoginForm() {
         {/* Botón de Login */}
         <Button 
           type="submit" 
-          className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg" 
+          className="w-full py-3 px-4 bg-gradient-to-r from-gray-800 to-black hover:from-gray-900 hover:to-gray-800 text-white font-medium rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:ring-2 focus:ring-gray-500/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg" 
           disabled={loading}
         >
           {loading ? (
@@ -153,7 +153,7 @@ export default function LoginForm() {
 
         {/* Enlaces adicionales */}
         <div className="pt-4 text-center">
-          <a href="#" className="text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200">
+          <a href="#" className="text-sm text-gray-400 hover:text-gray-300 transition-colors duration-200">
             ¿Olvidaste tu contraseña?
           </a>
         </div>

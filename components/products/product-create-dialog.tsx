@@ -75,23 +75,66 @@ export default function ProductCreateDialog({
     setLoading(true);
 
     try {
+      // Verificar la sesión primero
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error de sesión:', sessionError);
+        throw new Error('Error de autenticación');
+      }
+      
+      if (!session) {
+        console.error('No hay sesión activa');
+        throw new Error('No hay sesión activa');
+      }
+
+      // Verificar si el SKU ya existe (solo si se proporcionó un SKU)
+      if (formData.sku) {
+        const { data: existingProduct, error: skuCheckError } = await supabase
+          .from("products")
+          .select("id")
+          .eq("sku", formData.sku)
+          .single();
+
+        if (skuCheckError && skuCheckError.code !== 'PGRST116') { // PGRST116 significa que no se encontró el SKU
+          console.error('Error al verificar SKU:', skuCheckError);
+          throw skuCheckError;
+        }
+
+        if (existingProduct) {
+          throw new Error('Ya existe un producto con este SKU');
+        }
+      }
+
       let image_url = null;
       if (formData.image) {
         image_url = await uploadImage(formData.image);
       }
 
-      const { error } = await supabase.from("products").insert({
-        name: formData.name,
-        description: formData.description,
-        sku: formData.sku,
-        category: formData.category,
-        unit_price: parseFloat(formData.unit_price),
-        current_stock: parseInt(formData.current_stock),
-        min_stock_level: parseInt(formData.min_stock_level) || 0,
-        image_url: image_url,
-      });
+      const { data, error } = await supabase
+        .from("products")
+        .insert({
+          name: formData.name,
+          description: formData.description || null,
+          sku: formData.sku || null,
+          category: formData.category || null,
+          unit_price: parseFloat(formData.unit_price),
+          current_stock: parseInt(formData.current_stock),
+          min_stock_level: parseInt(formData.min_stock_level) || 0,
+          image_url: image_url,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error al crear producto:', error);
+        if (error.code === '23505') {
+          throw new Error('Ya existe un producto con este SKU');
+        }
+        throw error;
+      }
+
+      console.log('Producto creado:', data);
 
       toast({
         title: "Éxito",
@@ -109,10 +152,11 @@ export default function ProductCreateDialog({
         min_stock_level: "",
         image: null,
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error detallado:', error);
       toast({
-        title: "Error",
-        description: "No se pudo crear el producto",
+        title: "Error al crear producto",
+        description: error.message || "No se pudo crear el producto",
         variant: "destructive",
       });
     } finally {
@@ -154,7 +198,11 @@ export default function ProductCreateDialog({
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, sku: e.target.value }))
                 }
+                placeholder="Opcional - debe ser único"
               />
+              <p className="text-sm text-muted-foreground">
+                Si se proporciona, debe ser único para cada producto
+              </p>
             </div>
 
             <div className="space-y-2">

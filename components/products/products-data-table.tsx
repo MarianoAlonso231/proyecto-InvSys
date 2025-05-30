@@ -55,19 +55,44 @@ export default function ProductsDataTable() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      console.log('Iniciando fetchProducts...');
+      
+      // Verificar la sesión primero
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error de sesión:', sessionError);
+        throw sessionError;
+      }
+      
+      if (!session) {
+        console.error('No hay sesión activa');
+        throw new Error('No hay sesión activa');
+      }
+      
+      console.log('Sesión válida, procediendo a cargar productos...');
+      
       const { data, error } = await supabase
         .from("products")
-        .select("*");
+        .select("*")
+        .returns<Database['public']['Tables']['products']['Row'][]>();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error al cargar productos:', error);
+        throw error;
+      }
+      
+      console.log('Productos cargados:', data);
       
       if (data) {
         setProducts(data);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error detallado:', error);
+      const errorMessage = error.message || "No se pudieron cargar los productos";
       toast({
-        title: "Error",
-        description: "No se pudieron cargar los productos",
+        title: "Error al cargar productos",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

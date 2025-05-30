@@ -35,9 +35,9 @@ export default function InventoryValueChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inventory Value Trend</CardTitle>
+        <CardTitle>Valor del inventario</CardTitle>
         <CardDescription>
-          Monthly inventory value and product count
+          Valor mensual del inventario y cantidad de productos
         </CardDescription>
       </CardHeader>
       <CardContent className="h-[400px]">

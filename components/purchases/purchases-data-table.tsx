@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,99 +28,77 @@ import {
 } from "@/components/ui/table";
 import { 
   ChevronDown, 
-  PlusCircle, 
   Search, 
   SlidersHorizontal, 
-  MoreHorizontal,
   Calendar,
   CheckCircle,
   Clock,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  Loader2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
+import { getPurchases } from "@/lib/purchases";
+import { Purchase } from "@/types/purchases";
+import PurchaseCreateDialog from "./purchase-create-dialog";
+import PurchaseEditDialog from "./purchase-edit-dialog";
+import PurchaseDeleteDialog from "./purchase-delete-dialog";
 
 export default function PurchasesDataTable() {
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Mock data - in a real app, this would come from the API
-  const purchases = [
-    {
-      id: "1",
-      reference: "PO-2025-001",
-      supplier: "ABC Office Supplies",
-      date: new Date("2025-06-01"),
-      amount: 2540.75,
-      status: "received",
-      paymentStatus: "paid",
-    },
-    {
-      id: "2",
-      reference: "PO-2025-002",
-      supplier: "Tech Solutions Inc.",
-      date: new Date("2025-06-03"),
-      amount: 3750.00,
-      status: "pending",
-      paymentStatus: "unpaid",
-    },
-    {
-      id: "3",
-      reference: "PO-2025-003",
-      supplier: "Global Furniture Co.",
-      date: new Date("2025-06-05"),
-      amount: 1875.50,
-      status: "received",
-      paymentStatus: "paid",
-    },
-    {
-      id: "4",
-      reference: "PO-2025-004",
-      supplier: "Stationery World",
-      date: new Date("2025-06-08"),
-      amount: 580.25,
-      status: "cancelled",
-      paymentStatus: "refunded",
-    },
-    {
-      id: "5",
-      reference: "PO-2025-005",
-      supplier: "Electronics Wholesale",
-      date: new Date("2025-06-10"),
-      amount: 4920.00,
-      status: "pending",
-      paymentStatus: "partial",
-    },
-  ];
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Filter purchases based on search query
+  const fetchPurchases = async () => {
+    try {
+      setLoading(true);
+      const data = await getPurchases();
+      setPurchases(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las compras",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPurchases();
+  }, []);
+
   const filteredPurchases = purchases.filter(
     (purchase) =>
-      purchase.reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      purchase.supplier.toLowerCase().includes(searchQuery.toLowerCase())
+      purchase.reference_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      purchase.supplier?.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: Purchase['status']) => {
     switch (status) {
       case "received":
         return (
           <Badge variant="outline" className="border-green-500 text-green-500">
             <CheckCircle className="mr-1 h-3 w-3" />
-            Received
+            Recibido
           </Badge>
         );
       case "pending":
         return (
           <Badge variant="outline" className="border-amber-500 text-amber-500">
             <Clock className="mr-1 h-3 w-3" />
-            Pending
+            Pendiente
           </Badge>
         );
       case "cancelled":
         return (
           <Badge variant="outline" className="border-red-500 text-red-500">
             <AlertCircle className="mr-1 h-3 w-3" />
-            Cancelled
+            Cancelado
           </Badge>
         );
       default:
@@ -128,34 +106,34 @@ export default function PurchasesDataTable() {
     }
   };
 
-  const getPaymentStatusBadge = (status: string) => {
+  const getPaymentStatusBadge = (status: Purchase['payment_status']) => {
     switch (status) {
       case "paid":
         return (
           <Badge variant="outline" className="border-green-500 text-green-500">
             <DollarSign className="mr-1 h-3 w-3" />
-            Paid
+            Pagado
           </Badge>
         );
       case "unpaid":
         return (
           <Badge variant="outline" className="border-red-500 text-red-500">
             <DollarSign className="mr-1 h-3 w-3" />
-            Unpaid
+            No Pagado
           </Badge>
         );
       case "partial":
         return (
           <Badge variant="outline" className="border-blue-500 text-blue-500">
             <DollarSign className="mr-1 h-3 w-3" />
-            Partial
+            Parcial
           </Badge>
         );
       case "refunded":
         return (
           <Badge variant="outline" className="border-purple-500 text-purple-500">
             <DollarSign className="mr-1 h-3 w-3" />
-            Refunded
+            Reembolsado
           </Badge>
         );
       default:
@@ -168,15 +146,12 @@ export default function PurchasesDataTable() {
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Purchase Orders</CardTitle>
+            <CardTitle>Órdenes de Compra</CardTitle>
             <CardDescription>
-              Manage your supplier purchase orders
+              Gestiona tus órdenes de compra a proveedores
             </CardDescription>
           </div>
-          <Button className="shrink-0" size="sm">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Purchase
-          </Button>
+          <PurchaseCreateDialog onPurchaseCreated={fetchPurchases} />
         </div>
       </CardHeader>
       <CardContent>
@@ -184,7 +159,7 @@ export default function PurchasesDataTable() {
           <div className="flex w-full items-center gap-2 sm:max-w-xs">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search purchases..."
+              placeholder="Buscar compras..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-9 w-full"
@@ -195,31 +170,31 @@ export default function PurchasesDataTable() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9">
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  Filter
+                  Filtrar
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Status</DropdownMenuItem>
-                <DropdownMenuItem>Payment Status</DropdownMenuItem>
-                <DropdownMenuItem>Date Range</DropdownMenuItem>
-                <DropdownMenuItem>Supplier</DropdownMenuItem>
+                <DropdownMenuItem>Estado</DropdownMenuItem>
+                <DropdownMenuItem>Estado de Pago</DropdownMenuItem>
+                <DropdownMenuItem>Rango de Fechas</DropdownMenuItem>
+                <DropdownMenuItem>Proveedor</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9">
-                  Sort
+                  Ordenar
                   <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Date (Newest First)</DropdownMenuItem>
-                <DropdownMenuItem>Date (Oldest First)</DropdownMenuItem>
-                <DropdownMenuItem>Amount (High to Low)</DropdownMenuItem>
-                <DropdownMenuItem>Amount (Low to High)</DropdownMenuItem>
-                <DropdownMenuItem>Reference (A-Z)</DropdownMenuItem>
+                <DropdownMenuItem>Fecha (Más reciente)</DropdownMenuItem>
+                <DropdownMenuItem>Fecha (Más antigua)</DropdownMenuItem>
+                <DropdownMenuItem>Monto (Mayor a menor)</DropdownMenuItem>
+                <DropdownMenuItem>Monto (Menor a mayor)</DropdownMenuItem>
+                <DropdownMenuItem>Referencia (A-Z)</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -228,61 +203,60 @@ export default function PurchasesDataTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Referencia</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPurchases.length === 0 ? (
+              {loading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
-                    No purchases found.
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : filteredPurchases.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No se encontraron compras.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredPurchases.map((purchase) => (
                   <TableRow key={purchase.id}>
                     <TableCell>
-                      <div className="font-medium">{purchase.reference}</div>
+                      <div className="font-medium">{purchase.reference_number}</div>
                     </TableCell>
-                    <TableCell>{purchase.supplier}</TableCell>
+                    <TableCell>{purchase.supplier?.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
                         <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {format(purchase.date, "MMM d, yyyy")}
+                        {format(new Date(purchase.purchase_date), "dd/MM/yyyy")}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         {getStatusBadge(purchase.status)}
-                        {getPaymentStatusBadge(purchase.paymentStatus)}
+                        {getPaymentStatusBadge(purchase.payment_status)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      ${purchase.amount.toFixed(2)}
+                      ${purchase.total_amount.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Change Status</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex justify-end space-x-2">
+                        <PurchaseEditDialog
+                          purchase={purchase}
+                          onPurchaseUpdated={fetchPurchases}
+                        />
+                        <PurchaseDeleteDialog
+                          purchase={purchase}
+                          onPurchaseDeleted={fetchPurchases}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

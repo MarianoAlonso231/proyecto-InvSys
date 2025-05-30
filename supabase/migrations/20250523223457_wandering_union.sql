@@ -209,3 +209,33 @@ CREATE POLICY select_sale_items ON sale_items FOR SELECT TO authenticated USING 
 CREATE POLICY insert_sale_items ON sale_items FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY update_sale_items ON sale_items FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY delete_sale_items ON sale_items FOR DELETE TO authenticated USING (false);
+
+-- ========================================
+-- FUNCIÓN PARA OBTENER PRODUCTOS CON BAJO STOCK
+-- ========================================
+CREATE OR REPLACE FUNCTION get_low_stock_products()
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  current_stock INTEGER,
+  min_stock_level INTEGER,
+  unit_price DECIMAL,
+  total_value DECIMAL
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.id,
+    p.name,
+    p.current_stock,
+    p.min_stock_level,
+    p.unit_price,
+    (p.current_stock * p.unit_price)::DECIMAL AS total_value
+  FROM products p
+  WHERE p.current_stock <= p.min_stock_level
+  ORDER BY (p.current_stock::FLOAT / NULLIF(p.min_stock_level, 0)) ASC;
+END;
+$$;

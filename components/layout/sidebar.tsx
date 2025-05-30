@@ -96,7 +96,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         <div className="flex h-14 items-center justify-between px-4 border-b">
           <Link href="/dashboard" className="flex items-center space-x-2">
             <Package className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold tracking-tight">StockPro</span>
+            <span className="text-lg font-semibold tracking-tight">InvSys</span>
           </Link>
           <Button 
             variant="ghost" 
