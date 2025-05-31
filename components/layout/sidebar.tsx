@@ -67,11 +67,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
       href: "/reports",
       icon: <BarChart3 className="h-5 w-5" />,
     },
-    {
-      title: "Configuración",
-      href: "/settings",
-      icon: <Settings className="h-5 w-5" />,
-    },
+    
   ];
 
   if (!mounted) return null;

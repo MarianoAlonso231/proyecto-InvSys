@@ -25,20 +25,20 @@ export default function ReportsOverview() {
           <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="sales" className="flex items-center">
               <TrendingUp className="mr-2 h-4 w-4" />
-              Sales
+              Ventas
             </TabsTrigger>
             <TabsTrigger value="purchases" className="flex items-center">
               <BarChart className="mr-2 h-4 w-4" />
-              Purchases
+              Compras
             </TabsTrigger>
             <TabsTrigger value="inventory" className="flex items-center">
               <PieChart className="mr-2 h-4 w-4" />
-              Inventory
+              Inventario
             </TabsTrigger>
           </TabsList>
           <Button variant="outline" size="sm">
             <Download className="mr-2 h-4 w-4" />
-            Export
+            Exportar
           </Button>
         </div>
         
@@ -47,7 +47,7 @@ export default function ReportsOverview() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Sales
+                  Total Ventas
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -61,7 +61,7 @@ export default function ReportsOverview() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Average Sale
+                  Promedio de Ventas
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -75,7 +75,7 @@ export default function ReportsOverview() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Number of Sales
+                  Número de Ventas
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -89,7 +89,7 @@ export default function ReportsOverview() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Conversion Rate
+                  Tasa de Conversión
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -109,8 +109,8 @@ export default function ReportsOverview() {
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Top Selling Products</CardTitle>
-                <CardDescription>Products with highest sales volume</CardDescription>
+                <CardTitle>Productos más Vendidos</CardTitle>
+                <CardDescription>Productos con mayor volumen de ventas</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -128,8 +128,8 @@ export default function ReportsOverview() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Sales by Payment Method</CardTitle>
-                <CardDescription>Distribution of payment methods</CardDescription>
+                <CardTitle>Ventas por Método de Pago</CardTitle>
+                <CardDescription>Distribución de métodos de pago</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px] flex flex-col justify-center items-center">
                 <div className="w-[200px] h-[200px] rounded-full border-8 border-primary relative">
