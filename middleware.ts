@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware'; // Necesitarás crear este cliente para middleware
+import { ROUTE_PERMISSIONS } from '@/types/auth';
+import type { UserRole } from '@/types/auth';
 
 export async function middleware(request: NextRequest) {
   try {
-    console.log('🔍 Middleware ejecutándose en ruta:', request.nextUrl.pathname);
     
     const { supabase, response } = createClient(request);
     const {
@@ -11,11 +12,6 @@ export async function middleware(request: NextRequest) {
       error: sessionError,
     } = await supabase.auth.getSession();
     
-    console.log('📍 Estado de sesión:', {
-      tieneSession: !!session,
-      error: sessionError ? 'Error al obtener sesión' : null,
-      userId: session?.user?.id,
-    });
 
     const { pathname } = request.nextUrl;
 
@@ -23,11 +19,6 @@ export async function middleware(request: NextRequest) {
     const publicRoutes = ['/login', '/register', '/forgot-password'];
     const isPublicRoute = publicRoutes.includes(pathname);
 
-    console.log('🛣️ Información de ruta:', {
-      pathname,
-      isPublicRoute,
-      cookiesExist: request.cookies.getAll().length > 0
-    });
 
     // Si hay un error al obtener la sesión, permitir la solicitud pero registrar el error
     if (sessionError) {
@@ -37,7 +28,6 @@ export async function middleware(request: NextRequest) {
 
     // Si el usuario no está autenticado y no está en una ruta pública
     if (!session && !isPublicRoute) {
-      console.log('🚫 Usuario no autenticado, redirigiendo a login');
       const redirectUrl = new URL('/login', request.url);
       // Guardar la URL original para redireccionar después del login
       if (pathname !== '/') {
@@ -48,11 +38,33 @@ export async function middleware(request: NextRequest) {
 
     // Si el usuario está autenticado y está intentando acceder a una ruta pública
     if (session && isPublicRoute) {
-      console.log('✅ Usuario autenticado intentando acceder a ruta pública, redirigiendo a dashboard');
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    console.log('✨ Permitiendo acceso a la ruta');
+    // Verificar permisos basados en rol si la ruta requiere autenticación
+    if (session && !isPublicRoute) {
+      const email = session.user.email;
+      if (!email) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      // Mapa de correos a roles
+      const roleMap: Record<string, UserRole> = {
+        'admin@gmail.com': 'admin',
+        'ventas1@gmail.com': 'ventas',
+        'inventario@gmail.com': 'inventario'
+      };
+
+      const userRole = roleMap[email];
+      
+      // Verificar si la ruta actual está en las rutas con permisos
+      const routePermissions = ROUTE_PERMISSIONS[pathname];
+      
+      if (routePermissions && !routePermissions.includes(userRole)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    }
+
     return response;
   } catch (error) {
     console.error('Error en middleware:', error);

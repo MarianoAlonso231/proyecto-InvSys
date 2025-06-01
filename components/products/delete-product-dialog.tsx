@@ -13,14 +13,19 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase/client";
+import { Database } from "@/types/supabase";
+
+type Product = Database["public"]["Tables"]["products"]["Row"];
+
+interface DeleteProductDialogProps {
+  product: Product;
+  onProductDeleted: () => void;
+}
 
 export default function DeleteProductDialog({
-  productId,
+  product,
   onProductDeleted,
-}: {
-  productId: string;
-  onProductDeleted: () => void;
-}) {
+}: DeleteProductDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -32,7 +37,7 @@ export default function DeleteProductDialog({
       const { error } = await supabase
         .from("products")
         .delete()
-        .eq("id", productId);
+        .eq("id", product.id);
 
       if (error) throw error;
 
@@ -65,7 +70,7 @@ export default function DeleteProductDialog({
         <DialogHeader>
           <DialogTitle>Eliminar Producto</DialogTitle>
           <DialogDescription>
-            ¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.
+            ¿Estás seguro de que deseas eliminar el producto &quot;{product.name}&quot;? Esta acción no se puede deshacer.
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end space-x-2">

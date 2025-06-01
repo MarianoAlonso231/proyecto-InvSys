@@ -14,8 +14,11 @@ import {
   Receipt, 
   BarChart3, 
   Settings,
-  X
+  X,
+  Loader2
 } from "lucide-react";
+import { useRole } from "@/hooks/useRole";
+import { MENU_ITEMS_BY_ROLE } from "@/types/auth";
 
 interface SidebarProps {
   open: boolean;
@@ -31,12 +34,13 @@ interface NavItem {
 export default function Sidebar({ open, setOpen }: SidebarProps) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { role, loading } = useRole();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     {
       title: "Panel",
       href: "/dashboard",
@@ -67,10 +71,22 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
       href: "/reports",
       icon: <BarChart3 className="h-5 w-5" />,
     },
-    
   ];
 
+  // Filtrar los elementos del menú según el rol
+  const filteredNavItems = role
+    ? allNavItems.filter(item => MENU_ITEMS_BY_ROLE[role].includes(item.href))
+    : [];
+
   if (!mounted) return null;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -107,7 +123,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         <ScrollArea className="h-[calc(100vh-3.5rem)]">
           <div className="px-3 py-4">
             <nav className="flex flex-col space-y-1">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <Link 
                   key={item.href} 
                   href={item.href}

@@ -35,22 +35,45 @@ import {
   Clock,
   AlertCircle,
   DollarSign,
-  Loader2
+  Loader2,
+  Check,
+  MoreHorizontal
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
-import { getPurchases } from "@/lib/purchases";
+import { getPurchases, filterPurchases, sortPurchases, type FilterOption, type SortOption } from "@/lib/purchases";
 import { Purchase } from "@/types/purchases";
 import PurchaseCreateDialog from "./purchase-create-dialog";
 import PurchaseEditDialog from "./purchase-edit-dialog";
 import PurchaseDeleteDialog from "./purchase-delete-dialog";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { addDays } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 export default function PurchasesDataTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>("date-desc");
+  const [filters, setFilters] = useState<FilterOption>({
+    status: 'all',
+    paymentStatus: 'all',
+    supplier: null,
+    dateRange: {
+      from: null,
+      to: null
+    }
+  });
   const { toast } = useToast();
+
+  // Obtener proveedores únicos
+  const suppliers = Array.from(
+    new Set(purchases
+      .map(p => p.supplier)
+      .filter((supplier): supplier is NonNullable<typeof supplier> => supplier !== null)
+    )
+  );
 
   const fetchPurchases = async () => {
     try {
@@ -72,31 +95,31 @@ export default function PurchasesDataTable() {
     fetchPurchases();
   }, []);
 
-  const filteredPurchases = purchases.filter(
-    (purchase) =>
-      purchase.reference_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      purchase.supplier?.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Aplicar filtros y ordenamiento
+  const filteredAndSortedPurchases = sortPurchases(
+    filterPurchases(purchases, searchQuery, filters),
+    sortBy
   );
 
   const getStatusBadge = (status: Purchase['status']) => {
     switch (status) {
       case "received":
         return (
-          <Badge variant="outline" className="border-green-500 text-green-500">
+          <Badge variant="success">
             <CheckCircle className="mr-1 h-3 w-3" />
             Recibido
           </Badge>
         );
       case "pending":
         return (
-          <Badge variant="outline" className="border-amber-500 text-amber-500">
+          <Badge variant="warning">
             <Clock className="mr-1 h-3 w-3" />
             Pendiente
           </Badge>
         );
       case "cancelled":
         return (
-          <Badge variant="outline" className="border-red-500 text-red-500">
+          <Badge variant="destructive">
             <AlertCircle className="mr-1 h-3 w-3" />
             Cancelado
           </Badge>
@@ -110,28 +133,28 @@ export default function PurchasesDataTable() {
     switch (status) {
       case "paid":
         return (
-          <Badge variant="outline" className="border-green-500 text-green-500">
+          <Badge variant="success">
             <DollarSign className="mr-1 h-3 w-3" />
             Pagado
           </Badge>
         );
       case "unpaid":
         return (
-          <Badge variant="outline" className="border-red-500 text-red-500">
+          <Badge variant="destructive">
             <DollarSign className="mr-1 h-3 w-3" />
             No Pagado
           </Badge>
         );
       case "partial":
         return (
-          <Badge variant="outline" className="border-blue-500 text-blue-500">
+          <Badge variant="warning">
             <DollarSign className="mr-1 h-3 w-3" />
             Parcial
           </Badge>
         );
       case "refunded":
         return (
-          <Badge variant="outline" className="border-purple-500 text-purple-500">
+          <Badge variant="secondary">
             <DollarSign className="mr-1 h-3 w-3" />
             Reembolsado
           </Badge>
@@ -171,15 +194,97 @@ export default function PurchasesDataTable() {
                 <Button variant="outline" size="sm" className="h-9">
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
                   Filtrar
+                  {(filters.status !== 'all' || 
+                    filters.paymentStatus !== 'all' || 
+                    filters.supplier || 
+                    filters.dateRange.from || 
+                    filters.dateRange.to) && (
+                    <Badge variant="secondary" className="ml-2">
+                      Activo
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-[200px]">
                 <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Estado</DropdownMenuItem>
-                <DropdownMenuItem>Estado de Pago</DropdownMenuItem>
-                <DropdownMenuItem>Rango de Fechas</DropdownMenuItem>
-                <DropdownMenuItem>Proveedor</DropdownMenuItem>
+                
+                <DropdownMenuLabel className="font-normal">Estado</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, status: 'all' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.status === 'all' ? 'opacity-100' : 'opacity-0'}`} />
+                  Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, status: 'received' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.status === 'received' ? 'opacity-100' : 'opacity-0'}`} />
+                  Recibido
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, status: 'pending' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.status === 'pending' ? 'opacity-100' : 'opacity-0'}`} />
+                  Pendiente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, status: 'cancelled' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.status === 'cancelled' ? 'opacity-100' : 'opacity-0'}`} />
+                  Cancelado
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="font-normal">Estado de Pago</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, paymentStatus: 'all' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.paymentStatus === 'all' ? 'opacity-100' : 'opacity-0'}`} />
+                  Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, paymentStatus: 'paid' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.paymentStatus === 'paid' ? 'opacity-100' : 'opacity-0'}`} />
+                  Pagado
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, paymentStatus: 'unpaid' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.paymentStatus === 'unpaid' ? 'opacity-100' : 'opacity-0'}`} />
+                  No Pagado
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, paymentStatus: 'partial' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.paymentStatus === 'partial' ? 'opacity-100' : 'opacity-0'}`} />
+                  Parcial
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, paymentStatus: 'refunded' }))}>
+                  <Check className={`mr-2 h-4 w-4 ${filters.paymentStatus === 'refunded' ? 'opacity-100' : 'opacity-0'}`} />
+                  Reembolsado
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="font-normal">Proveedor</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setFilters(f => ({ ...f, supplier: null }))}>
+                  <Check className={`mr-2 h-4 w-4 ${!filters.supplier ? 'opacity-100' : 'opacity-0'}`} />
+                  Todos
+                </DropdownMenuItem>
+                {suppliers.map((supplier) => (
+                  <DropdownMenuItem 
+                    key={supplier.id} 
+                    onClick={() => setFilters(f => ({ ...f, supplier: supplier.id }))}
+                  >
+                    <Check className={`mr-2 h-4 w-4 ${filters.supplier === supplier.id ? 'opacity-100' : 'opacity-0'}`} />
+                    {supplier.name}
+                  </DropdownMenuItem>
+                ))}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="font-normal">Rango de Fechas</DropdownMenuLabel>
+                <div className="p-2">
+                  <DatePickerWithRange 
+                    date={{
+                      from: filters.dateRange.from || undefined,
+                      to: filters.dateRange.to || undefined
+                    }}
+                    onSelect={(range: DateRange | undefined) => 
+                      setFilters(f => ({ 
+                        ...f, 
+                        dateRange: {
+                          from: range?.from || null,
+                          to: range?.to || null
+                        }
+                      }))
+                    }
+                  />
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -190,11 +295,30 @@ export default function PurchasesDataTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Fecha (Más reciente)</DropdownMenuItem>
-                <DropdownMenuItem>Fecha (Más antigua)</DropdownMenuItem>
-                <DropdownMenuItem>Monto (Mayor a menor)</DropdownMenuItem>
-                <DropdownMenuItem>Monto (Menor a mayor)</DropdownMenuItem>
-                <DropdownMenuItem>Referencia (A-Z)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('date-desc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'date-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Fecha (Más reciente)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('date-asc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'date-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Fecha (Más antigua)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('amount-desc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'amount-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Monto (Mayor a menor)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('amount-asc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'amount-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Monto (Menor a mayor)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('reference-asc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'reference-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Referencia (A-Z)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('reference-desc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'reference-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Referencia (Z-A)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -204,59 +328,60 @@ export default function PurchasesDataTable() {
             <TableHeader>
               <TableRow>
                 <TableHead>Referencia</TableHead>
-                <TableHead>Proveedor</TableHead>
                 <TableHead>Fecha</TableHead>
+                <TableHead>Proveedor</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Monto</TableHead>
+                <TableHead>Estado de Pago</TableHead>
+                <TableHead className="text-right">Monto Total</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredPurchases.length === 0 ? (
+              ) : filteredAndSortedPurchases.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No se encontraron compras.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPurchases.map((purchase) => (
+                filteredAndSortedPurchases.map((purchase) => (
                   <TableRow key={purchase.id}>
+                    <TableCell>{purchase.reference_number || "-"}</TableCell>
                     <TableCell>
-                      <div className="font-medium">{purchase.reference_number}</div>
+                      {format(new Date(purchase.purchase_date), "dd/MM/yyyy")}
                     </TableCell>
-                    <TableCell>{purchase.supplier?.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {format(new Date(purchase.purchase_date), "dd/MM/yyyy")}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        {getStatusBadge(purchase.status)}
-                        {getPaymentStatusBadge(purchase.payment_status)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell>{purchase.supplier?.name ?? "-"}</TableCell>
+                    <TableCell>{getStatusBadge(purchase.status)}</TableCell>
+                    <TableCell>{getPaymentStatusBadge(purchase.payment_status)}</TableCell>
+                    <TableCell className="text-right">
                       ${purchase.total_amount.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <PurchaseEditDialog
-                          purchase={purchase}
-                          onPurchaseUpdated={fetchPurchases}
-                        />
-                        <PurchaseDeleteDialog
-                          purchase={purchase}
-                          onPurchaseDeleted={fetchPurchases}
-                        />
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <PurchaseEditDialog 
+                            purchase={purchase}
+                            onPurchaseUpdated={fetchPurchases}
+                          />
+                          <PurchaseDeleteDialog
+                            purchase={purchase}
+                            onPurchaseDeleted={fetchPurchases}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

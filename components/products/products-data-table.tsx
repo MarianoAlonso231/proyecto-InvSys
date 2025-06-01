@@ -35,7 +35,8 @@ import {
   AlertTriangle,
   Package,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Check
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Database } from "@/types/supabase";
@@ -45,19 +46,27 @@ import ProductEditDialog from "./product-edit-dialog";
 import DeleteProductDialog from "./delete-product-dialog";
 import { supabase } from "@/lib/supabase/client";
 import Image from "next/image";
+import { filterProducts, sortProducts, type FilterOption, type SortOption } from "@/lib/products";
+
+type Product = Database["public"]["Tables"]["products"]["Row"];
 
 export default function ProductsDataTable() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<Database["public"]["Tables"]["products"]["Row"][]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentFilter, setCurrentFilter] = useState<FilterOption>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("name-asc");
   const { toast } = useToast();
+
+  // Obtener categorías únicas
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       console.log('Iniciando fetchProducts...');
       
-      // Verificar la sesión primero
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -75,7 +84,7 @@ export default function ProductsDataTable() {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .returns<Database['public']['Tables']['products']['Row'][]>();
+        .returns<Product[]>();
 
       if (error) {
         console.error('Error al cargar productos:', error);
@@ -104,12 +113,31 @@ export default function ProductsDataTable() {
     fetchProducts();
   }, []);
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.sku || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.category || "").toLowerCase().includes(searchQuery.toLowerCase())
+  // Aplicar filtros y ordenamiento
+  const filteredAndSortedProducts = sortProducts(
+    filterProducts(products, searchQuery, currentFilter, selectedCategory),
+    sortBy
   );
+
+  const handleCategorySelect = (category: string | null) => {
+    setSelectedCategory(category);
+    setCurrentFilter("all");
+  };
+
+  const handleFilterSelect = (filter: FilterOption) => {
+    setCurrentFilter(filter);
+    setSelectedCategory(null);
+  };
+
+  const getStockBadge = (stock: number, minStock: number) => {
+    if (stock === 0) {
+      return <Badge variant="destructive">Sin Stock (0)</Badge>;
+    }
+    if (stock <= minStock) {
+      return <Badge variant="warning">Bajo Stock ({stock})</Badge>;
+    }
+    return <Badge variant="success">{stock} unidades</Badge>;
+  };
 
   return (
     <Card>
@@ -141,14 +169,41 @@ export default function ProductsDataTable() {
                 <Button variant="outline" size="sm" className="h-9">
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
                   Filtrar
+                  {(currentFilter !== 'all' || selectedCategory) && (
+                    <Badge variant="secondary" className="ml-2">
+                      {currentFilter !== 'all' ? currentFilter : selectedCategory}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Categoría</DropdownMenuItem>
-                <DropdownMenuItem>Bajo Stock</DropdownMenuItem>
-                <DropdownMenuItem>Sin Stock</DropdownMenuItem>
+                <DropdownMenuLabel className="font-normal">Categoría</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleCategorySelect(null)}>
+                  <Check className={`mr-2 h-4 w-4 ${!selectedCategory ? 'opacity-100' : 'opacity-0'}`} />
+                  Todas
+                </DropdownMenuItem>
+                {categories.map((category) => (
+                  <DropdownMenuItem key={category} onClick={() => handleCategorySelect(category)}>
+                    <Check className={`mr-2 h-4 w-4 ${selectedCategory === category ? 'opacity-100' : 'opacity-0'}`} />
+                    {category}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="font-normal">Stock</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleFilterSelect('all')}>
+                  <Check className={`mr-2 h-4 w-4 ${currentFilter === 'all' ? 'opacity-100' : 'opacity-0'}`} />
+                  Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleFilterSelect('low-stock')}>
+                  <Check className={`mr-2 h-4 w-4 ${currentFilter === 'low-stock' ? 'opacity-100' : 'opacity-0'}`} />
+                  Bajo Stock
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleFilterSelect('out-of-stock')}>
+                  <Check className={`mr-2 h-4 w-4 ${currentFilter === 'out-of-stock' ? 'opacity-100' : 'opacity-0'}`} />
+                  Sin Stock
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -159,12 +214,30 @@ export default function ProductsDataTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Nombre (A-Z)</DropdownMenuItem>
-                <DropdownMenuItem>Nombre (Z-A)</DropdownMenuItem>
-                <DropdownMenuItem>Precio (Menor a Mayor)</DropdownMenuItem>
-                <DropdownMenuItem>Precio (Mayor a Menor)</DropdownMenuItem>
-                <DropdownMenuItem>Stock (Menor a Mayor)</DropdownMenuItem>
-                <DropdownMenuItem>Stock (Mayor a Menor)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('name-asc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'name-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Nombre (A-Z)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('name-desc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'name-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Nombre (Z-A)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('price-asc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'price-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Precio (Menor a Mayor)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('price-desc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'price-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Precio (Mayor a Menor)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('stock-asc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'stock-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Stock (Menor a Mayor)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('stock-desc')}>
+                  <Check className={`mr-2 h-4 w-4 ${sortBy === 'stock-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                  Stock (Mayor a Menor)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -190,65 +263,62 @@ export default function ProductsDataTable() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredProducts.length === 0 ? (
+              ) : filteredAndSortedProducts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
                     No se encontraron productos.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredProducts.map((product) => (
+                filteredAndSortedProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {product.image_url ? (
-                          <div className="relative h-10 w-10 rounded-md overflow-hidden">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md border">
+                          {product.image_url ? (
                             <Image
                               src={product.image_url}
                               alt={product.name}
-                              fill
-                              className="object-cover"
+                              width={40}
+                              height={40}
+                              className="rounded-md object-cover"
                             />
-                          </div>
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-md border">
-                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="font-medium">{product.name}</div>
+                          ) : (
+                            <Package className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{product.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {product.description}
+                          </span>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell>{product.sku}</TableCell>
-                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.sku || "-"}</TableCell>
+                    <TableCell>{product.category || "-"}</TableCell>
                     <TableCell className="text-right">
                       ${product.unit_price.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <span className="font-medium">{product.current_stock}</span>
-                        {product.current_stock <= (product.min_stock_level || 0) && (
-                          <Badge variant="outline" className="border-amber-500 text-amber-500">
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            Bajo
-                          </Badge>
-                        )}
-                      </div>
+                      {getStockBadge(product.current_stock, product.min_stock_level)}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Acciones</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver Detalles</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <div className="flex items-center justify-between px-2">
-                            <ProductEditDialog product={product} onProductUpdated={fetchProducts} />
-                            <DeleteProductDialog productId={product.id} onProductDeleted={fetchProducts} />
-                          </div>
+                          <ProductEditDialog 
+                            product={product}
+                            onProductUpdated={fetchProducts}
+                          />
+                          <DeleteProductDialog
+                            product={product}
+                            onProductDeleted={fetchProducts}
+                          />
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

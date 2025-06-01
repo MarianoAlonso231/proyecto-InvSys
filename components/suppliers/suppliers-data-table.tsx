@@ -28,76 +28,103 @@ import {
 } from "@/components/ui/table";
 import { 
   ChevronDown, 
+  PlusCircle, 
   Search, 
-  SlidersHorizontal, 
   MoreHorizontal,
   Mail,
   Phone,
   MapPin,
   User,
-  Loader2
+  Loader2,
+  Check,
+  Trash,
+  Edit
 } from "lucide-react";
+import { format } from "date-fns";
+import { Supplier } from "@/types/suppliers";
+import { 
+  getSuppliers, 
+  deleteSupplier, 
+  filterSuppliers, 
+  sortSuppliers, 
+  type SortOption 
+} from "@/lib/suppliers";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase/client";
-import { Database } from "@/types/supabase";
-import SupplierCreateDialog from "./supplier-create-dialog";
-import SupplierEditDialog from "./supplier-edit-dialog";
-import SupplierDeleteDialog from "./supplier-delete-dialog";
-
-type Supplier = Database["public"]["Tables"]["suppliers"]["Row"];
+import CreateSupplierDialog from "./create-supplier-dialog";
+import EditSupplierDialog from "./edit-supplier-dialog";
+import DeleteSupplierDialog from "./delete-supplier-dialog";
 
 export default function SuppliersDataTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>("date-desc");
   const { toast } = useToast();
 
-  const fetchSuppliers = async () => {
+  const loadSuppliers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("*")
-        .order("name");
-
-      if (error) throw error;
-      
-      if (data) {
-        setSuppliers(data);
-      }
+      const data = await getSuppliers();
+      setSuppliers(data || []);
     } catch (error) {
+      console.error('Error al cargar proveedores:', error);
       toast({
         title: "Error",
         description: "No se pudieron cargar los proveedores",
         variant: "destructive",
       });
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSuppliers();
+    loadSuppliers();
   }, []);
 
-  const filteredSuppliers = suppliers.filter(
-    (supplier) =>
-      supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (supplier.contact_person || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (supplier.email || "").toLowerCase().includes(searchQuery.toLowerCase())
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSupplier(id);
+      await loadSuppliers();
+      toast({
+        title: "Éxito",
+        description: "Proveedor eliminado correctamente",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el proveedor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Aplicar filtros y ordenamiento
+  const filteredAndSortedSuppliers = sortSuppliers(
+    filterSuppliers(suppliers, { searchQuery }),
+    sortBy
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Directorio de Proveedores</CardTitle>
+            <CardTitle>Proveedores</CardTitle>
             <CardDescription>
-              Gestiona tus contactos y relaciones con proveedores
+              Gestiona tus proveedores y sus datos de contacto
             </CardDescription>
           </div>
-          <SupplierCreateDialog onSupplierCreated={fetchSuppliers} />
+          <CreateSupplierDialog onSupplierCreated={loadSuppliers} />
         </div>
       </CardHeader>
       <CardContent>
@@ -111,111 +138,110 @@ export default function SuppliersDataTable() {
               className="h-9 w-full"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
-                  <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  Filtrar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Con email</DropdownMenuItem>
-                <DropdownMenuItem>Con teléfono</DropdownMenuItem>
-                <DropdownMenuItem>Con dirección</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
-                  Ordenar
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>Nombre (A-Z)</DropdownMenuItem>
-                <DropdownMenuItem>Nombre (Z-A)</DropdownMenuItem>
-                <DropdownMenuItem>Más recientes</DropdownMenuItem>
-                <DropdownMenuItem>Más antiguos</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                Ordenar
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSortBy('name-asc')}>
+                <Check className={`mr-2 h-4 w-4 ${sortBy === 'name-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                Nombre (A-Z)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy('name-desc')}>
+                <Check className={`mr-2 h-4 w-4 ${sortBy === 'name-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                Nombre (Z-A)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy('date-desc')}>
+                <Check className={`mr-2 h-4 w-4 ${sortBy === 'date-desc' ? 'opacity-100' : 'opacity-0'}`} />
+                Más recientes
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy('date-asc')}>
+                <Check className={`mr-2 h-4 w-4 ${sortBy === 'date-asc' ? 'opacity-100' : 'opacity-0'}`} />
+                Más antiguos
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="mt-6 rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Persona de Contacto</TableHead>
                 <TableHead>Contacto</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Teléfono</TableHead>
                 <TableHead>Dirección</TableHead>
+                <TableHead>Fecha de Registro</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredSuppliers.length === 0 ? (
+              ) : filteredAndSortedSuppliers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No se encontraron proveedores.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSuppliers.map((supplier) => (
+                filteredAndSortedSuppliers.map((supplier) => (
                   <TableRow key={supplier.id}>
+                    <TableCell>{supplier.name}</TableCell>
                     <TableCell>
-                      <div className="font-medium">{supplier.name}</div>
-                    </TableCell>
-                    <TableCell>
-                      {supplier.contact_person && (
-                        <div className="flex items-center">
-                          <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                          {supplier.contact_person}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col space-y-1">
-                        {supplier.email && (
-                          <div className="flex items-center text-sm">
-                            <Mail className="mr-2 h-3 w-3 text-muted-foreground" />
-                            {supplier.email}
-                          </div>
-                        )}
-                        {supplier.phone && (
-                          <div className="flex items-center text-sm">
-                            <Phone className="mr-2 h-3 w-3 text-muted-foreground" />
-                            {supplier.phone}
-                          </div>
-                        )}
+                      <div className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        {supplier.contact_person}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {supplier.address && (
-                        <div className="flex items-center text-sm max-w-xs truncate">
-                          <MapPin className="mr-2 h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          {supplier.address}
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        <Mail className="mr-2 h-4 w-4" />
+                        {supplier.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Phone className="mr-2 h-4 w-4" />
+                        {supplier.phone}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <MapPin className="mr-2 h-4 w-4" />
+                        {supplier.address}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(supplier.created_at), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <SupplierEditDialog
-                          supplier={supplier}
-                          onSupplierUpdated={fetchSuppliers}
-                        />
-                        <SupplierDeleteDialog
-                          supplier={supplier}
-                          onSupplierDeleted={fetchSuppliers}
-                        />
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <EditSupplierDialog
+                            supplier={supplier}
+                            onSupplierUpdated={loadSuppliers}
+                          />
+                          <DeleteSupplierDialog
+                            supplier={supplier}
+                            onSupplierDeleted={loadSuppliers}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
